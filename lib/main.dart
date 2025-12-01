@@ -7,6 +7,8 @@
   import 'screens/signin_screen.dart';
   import 'screens/signup_screen.dart';
   import 'package:supabase_flutter/supabase_flutter.dart';
+
+  
   void main() async{
   //runApp(const ProviderScope(child: MyApp()));
   WidgetsFlutterBinding.ensureInitialized();

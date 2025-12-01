@@ -1,107 +1,141 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
+import '../providers/audio_player_provider.dart';
+import '../providers/favorite_provider.dart'; // Tambahkan ini
 
-class PlayerScreen extends StatelessWidget {
-  const PlayerScreen({super.key});
+class PlayerScreen extends ConsumerStatefulWidget {
+  final String title;
+  final String artist;
+  final String? imageUrl;
+  final String audioUrl;
+  final int songId; // Tambahkan jika belum
+
+  const PlayerScreen({
+    super.key,
+    required this.title,
+    required this.artist,
+    required this.imageUrl,
+    required this.audioUrl,
+    required this.songId, // Tambahkan jika belum
+  });
+
+  @override
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  @override
+  void initState() {
+    super.initState();
+    ref.read(audioControllerProvider.notifier).load(widget.audioUrl);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final playerState = ref.watch(audioControllerProvider);
+    final favoriteIdsAsync = ref.watch(favoriteSongIdsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: BackButton(color: AppColors.textPrimary),
+        title: const Text("Now Playing"),
         centerTitle: true,
-        title: const Text(
-          "Now Playing",
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 30),
-            // Cover Album
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                'assets/images_album/slayer_2.jpg',
-                height: 300,
-                width: 300,
-                fit: BoxFit.cover,
-              ),
+              child: (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+                  ? Image.network(
+                      widget.imageUrl!,
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/no_cover.jpg',
+                          width: 250,
+                          height: 250,
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      'assets/images/no_cover.jpg',
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.cover,
+                    ),
             ),
+
             const SizedBox(height: 24),
-
-            // Title & Artist
-            const Text(
-              "Song Title",
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(widget.title,textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text(
-              "Artist Name",
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-              ),
-            ),
+            Text(widget.artist, style: const TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
 
-            const SizedBox(height: 32),
+            // ❤️ LOVE BUTTON
+            favoriteIdsAsync.when(
+              data: (ids) {
+                final isFavorited = ids.contains(widget.songId);
+                return IconButton(
+                  icon: Icon(
+                    isFavorited ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorited ? Colors.red : AppColors.accent,
+                  ),
+                  tooltip: isFavorited ? 'Remove from Favorites' : 'Add to Favorites',
+                  iconSize: 32,
+                  onPressed: () async {
+                    print('Toggle favorite for song ID: ${widget.songId}');
+                    await toggleFavorite(widget.songId.toString(), ref);
+                    ref.invalidate(favoriteSongIdsProvider);
+                  },
+                );
+              },
+              loading: () => const SizedBox(height: 32),
+              error: (e, stack) {
+                debugPrint('screen Error in favoriteSongIdsProvider: $e');
+                debugPrint('pasti StackTrace: $stack');
+                return const Icon(Icons.error, color: Colors.red);
+              },            ),
 
-            // Slider
+            const SizedBox(height: 16),
             Slider(
-              value: 30,
-              min: 0,
-              max: 100,
+              value: playerState.position.inSeconds.toDouble(),
+              max: playerState.duration.inSeconds.toDouble() > 0 ? playerState.duration.inSeconds.toDouble() : 1,
+              onChanged: (value) {
+                ref.read(audioControllerProvider.notifier).seek(Duration(seconds: value.toInt()));
+              },
               activeColor: AppColors.accent,
-              onChanged: (value) {},
+              inactiveColor: Colors.white24,
             ),
-
-            // Duration (current / total)
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text("01:15", style: TextStyle(color: AppColors.textSecondary)),
-                Text("03:45", style: TextStyle(color: AppColors.textSecondary)),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // Player Controls
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+                IconButton(icon: const Icon(Icons.skip_previous), onPressed: () {}, iconSize: 36),
                 IconButton(
-                  icon: const Icon(Icons.skip_previous_rounded, size: 40),
-                  color: AppColors.accent,
-                  onPressed: () {},
+                  icon: Icon(playerState.isPlaying ? Icons.pause : Icons.play_arrow),
+                  onPressed: () async {
+                      final notifier = ref.read(audioControllerProvider.notifier);
+
+                      if (playerState.isPlaying) {
+                        await notifier.pause();
+                      } else {
+                        await notifier.play();
+                      }
+
+
+                  },
+                  iconSize: 48,
                 ),
-                const SizedBox(width: 20),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.play_arrow_rounded, size: 40),
-                    color: Colors.black,
-                    onPressed: () {},
-                  ),
-                ),
-                const SizedBox(width: 20),
-                IconButton(
-                  icon: const Icon(Icons.skip_next_rounded, size: 40),
-                  color: AppColors.accent,
-                  onPressed: () {},
-                ),
+                IconButton(icon: const Icon(Icons.skip_next), onPressed: () {}, iconSize: 36),
               ],
             ),
           ],

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'signin_screen.dart';
-import 'main_navigation.dart';
 import '../../providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,20 +63,39 @@ class SignUpScreen extends ConsumerWidget {
               const SizedBox(height: 32),
 
               ElevatedButton(
-                onPressed: () async{
-                  // Aksi sign up di sini
+                onPressed: () async {
                   final auth = ref.read(authRepositoryProvider);
-                  try{
+
+                  try {
                     await auth.signUp(
-                      emailController.text,
-                      passwordController.text,
-                      fullnameController.text,
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
+                      fullnameController.text.trim(),
                     );
-                    if (context.mounted) Navigator.pushReplacementNamed(
-                      context,'/signin');
-                  }catch (e){
-                    // Handle error
-                    print(e);
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Pendaftaran berhasil! Silakan login."),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      Navigator.pushReplacementNamed(context, '/signin');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Gagal mendaftar. Periksa email dan password Anda, atau coba lagi nanti.",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    print('Sign up error: $e'); // Debug log
                   }
                 },
                 child: const Text('SIGN UP'),
@@ -91,7 +109,10 @@ class SignUpScreen extends ConsumerWidget {
                     MaterialPageRoute(builder: (_) => SignInScreen()),
                   );
                 },
-                child: const Text("Already have an account? Sign In"),
+                child: const Text(
+                  "Already have an account? Sign In",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

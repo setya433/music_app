@@ -1,109 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/favorite_provider.dart';
 import '../theme/app_theme.dart';
+import 'player_screen.dart';
 
-class LibraryScreen extends StatelessWidget {
+class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final favorites = List.generate(5, (i) => 'Favorite Song $i');
-    final playlists = List.generate(3, (i) => 'Playlist $i');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoritesAsync = ref.watch(favoritesProvider);
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'Your Library',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.accent,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Favorites',
-            style: TextStyle(
-              fontSize: 18,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...favorites.map((song) => _buildSongItem(song)),
-          const SizedBox(height: 30),
-          const Text(
-            'Playlists',
-            style: TextStyle(
-              fontSize: 18,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...playlists.map((playlist) => _buildPlaylistItem(playlist)),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Your Library"),
+        backgroundColor: AppColors.background,
       ),
-    );
-  }
+      backgroundColor: AppColors.background,
+      body: favoritesAsync.when(
+        data: (songs) {
+          if (songs.isEmpty) {
+            return const Center(
+              child: Text("No favorites yet", style: TextStyle(color: AppColors.textSecondary)),
+            );
+          }
 
-  Widget _buildSongItem(String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.favorite, color: AppColors.accent),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.play_arrow, color: AppColors.accent),
-            onPressed: () {},
-          )
-        ],
-      ),
-    );
-  }
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: songs.length,
+            itemBuilder: (context, index) {
+              final song = songs[index];
+              return ListTile(
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: (song.imageUrl != null && song.imageUrl!.isNotEmpty)
+                      ? Image.network(
+                          song.imageUrl!,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/no_cover.jpg',
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          'assets/images/no_cover.jpg',
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        ),
+                ),
 
-  Widget _buildPlaylistItem(String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.library_music, color: AppColors.accent),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, color: AppColors.accent, size: 16),
-            onPressed: () {},
-          )
-        ],
+                title: Text(song.title, style: const TextStyle(color: AppColors.textPrimary)),
+                subtitle: Text(song.artist, style: const TextStyle(color: AppColors.textSecondary)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.play_arrow, color: AppColors.accent),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PlayerScreen(
+                          title: song.title,
+                          artist: song.artist,
+                          imageUrl: song.imageUrl  ?? '', // Pastikan imageUrl ada di model Song
+                          audioUrl: song.audioUrl,
+                          songId: song.id.toInt(), // Pastikan song.id ada di model Song
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text("Error: $e")),
       ),
     );
   }

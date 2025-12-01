@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'signup_screen.dart';
-import 'main_navigation.dart';
 import '../../providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -53,15 +52,38 @@ class SignInScreen extends ConsumerWidget {
               const SizedBox(height: 32),
 
               ElevatedButton(
-                onPressed: () async{
-                  // Aksi sign in di sini
+                onPressed: () async {
                   final auth = ref.read(authRepositoryProvider);
-                  try{
-                    await auth.signIn(emailController.text, passwordController.text);
-                    if (context.mounted) Navigator.pushReplacementNamed(context, '/main');
-                  }catch (e){
-                    // Handle error
-                    print(e);
+
+                  try {
+                    await auth.signIn(
+                      emailController.text.trim(),
+                      passwordController.text.trim(),
+                    );
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Berhasil masuk!"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      Navigator.pushReplacementNamed(context, '/main');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Gagal masuk. Periksa kembali email atau password Anda.",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    print('Sign in error: $e'); // Debug log
                   }
                 },
                 child: const Text('SIGN IN'),
@@ -69,18 +91,17 @@ class SignInScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               TextButton(
-                onPressed: () async{
+                onPressed: () {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => SignUpScreen()
+                      builder: (_) => SignUpScreen(),
                     ),
                   );
                 },
-                child: const Text("Don't have an account? Sign Up",
-                style: TextStyle(
-                  color: Colors.white
-                )
+                child: const Text(
+                  "Don't have an account? Sign Up",
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
             ],
